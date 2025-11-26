@@ -1,22 +1,16 @@
 pipeline {
     agent any
 
-    // environment {
-    //     // --- CONFIGURATION ---
-    //     DOCKER_HUB_USER = 'yguptaji' 
-    //     REPO_NAME = 'IMT2023125' 
-        
-    //     // This ID must match what you created in Jenkins > Manage Jenkins > Credentials
-    //     DOCKERHUB_CREDS = 'dockerhub-login'
-    // }
     environment {
-        DOCKERHUB_USERNAME = 'yguptaji'
-        IMAGE_NAME = 'todo-cli'
-        IMAGE_TAG = "${BUILD_NUMBER}"
-
-        GITHUB_CREDS = credentials('githubCreds')
-        DOCKERHUB_CREDS = credentials('dockerhub-login')
-
+        // --- CONFIGURATION ---
+        // Your Docker Hub Username
+        DOCKER_HUB_USER = 'yguptaji' 
+        
+        // Your Roll Number (Must match the Repo name you created on Docker Hub)
+        REPO_NAME = 'IMT2023125' 
+        
+        // The ID of the credentials stored in Jenkins
+        REGISTRY_CRED = 'dockerhub-login'
     }
 
     stages {
@@ -29,7 +23,7 @@ pipeline {
         stage('Build & Test') {
             steps {
                 echo 'Running Maven Build and Tests...'
-                // If tests fail, the pipeline stops here.
+                // runs the JUnit tests. If this fails, the pipeline stops.
                 bat 'mvn clean test'
             }
         }
@@ -39,25 +33,25 @@ pipeline {
                 script {
                     echo 'Tests passed. Building Docker Image...'
                     
-                    // CRITICAL FIX FOR WINDOWS: 
-                    // We use 'withCredentials' to handle login manually instead of using the plugin.
-                    withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDS, passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                    // WINDOWS FIX: We use 'withCredentials' to handle login manually 
+                    // This avoids the "context desktop-linux" error
+                    withCredentials([usernamePassword(credentialsId: REGISTRY_CRED, passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                         
-                        // 1. Log in to Docker Hub 
-                        // We pipe the password into the login command for security
+                        // 1. Log in to Docker Hub
+                        // We pipe the password into the command for security
                         bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
                         
                         // 2. Build the image
-                        bat "docker build -t ${DOCKERHUB_USERNAME}/${REPO_NAME}:${env.BUILD_ID} ."
+                        bat "docker build -t ${DOCKER_HUB_USER}/${REPO_NAME}:${env.BUILD_ID} ."
                         
-                        // 3. Tag it as 'latest' as well
-                        bat "docker tag ${DOCKERHUB_USERNAME}/${REPO_NAME}:${env.BUILD_ID} ${DOCKERHUB_USERNAME}/${REPO_NAME}:latest"
+                        // 3. Tag it as 'latest'
+                        bat "docker tag ${DOCKER_HUB_USER}/${REPO_NAME}:${env.BUILD_ID} ${DOCKER_HUB_USER}/${REPO_NAME}:latest"
                         
-                        // 4. Push the numbered version (e.g., :1, :2)
-                        bat "docker push ${DOCKERHUB_USERNAME}/${REPO_NAME}:${env.BUILD_ID}"
+                        // 4. Push the numbered version (e.g., :15)
+                        bat "docker push ${DOCKER_HUB_USER}/${REPO_NAME}:${env.BUILD_ID}"
                         
                         // 5. Push the 'latest' version
-                        bat "docker push ${DOCKERHUB_USERNAME}/${REPO_NAME}:latest"
+                        bat "docker push ${DOCKER_HUB_USER}/${REPO_NAME}:latest"
                         
                         // 6. Logout for security
                         bat 'docker logout'
