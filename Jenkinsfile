@@ -7,7 +7,7 @@ pipeline {
         DOCKER_HUB_USER = 'yguptaji' 
         
         // Your Roll Number (Must match the Repo name you created on Docker Hub)
-        REPO_NAME = 'IMT2023125' 
+        REPO_NAME = 'imt2023125' 
         
         // The ID of the credentials stored in Jenkins
         REGISTRY_CRED = 'dockerhub-login'
